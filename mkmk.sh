@@ -1,105 +1,54 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # ═══════════════════════════════════════════════════════════
-#  mexOn Voucher Tool — Auto Installer
+#   Mikrotik Router Test — Auto Installer
 # ═══════════════════════════════════════════════════════════
 
-set -e   # error တစ်ခုခုဆို ချက်ချင်း ရပ်
+echo -e "\033[96m═══════════════════════════════════════════════\033[0m"
+echo -e "\033[96m      Mikrotik Router Test — Installer        \033[0m"
+echo -e "\033[96m═══════════════════════════════════════════════\033[0m"
 
-# ─── Colors ───
-GREEN="\033[92m"
-RED="\033[91m"
-YELLOW="\033[93m"
-BLUE="\033[94m"
-CYAN="\033[96m"
-RESET="\033[0m"
+echo -e "\n\033[92m[*] mikrotik_voucher အား ထည့်သွင်းနေပါသည်...\033[0m"
 
-echo -e "${CYAN}═══════════════════════════════════════════════${RESET}"
-echo -e "${CYAN}   mexOn Voucher Tool — Installer${RESET}"
-echo -e "${CYAN}═══════════════════════════════════════════════${RESET}"
-
-# ─── ၁။ Storage access ───
-echo -e "\n${BLUE}[*]${RESET} Requesting storage access..."
-termux-setup-storage || true
+# ─── ၀။ Storage access ───
+echo -e "\033[94m[*] Storage permission တောင်းခံနေသည်...\033[0m"
+termux-setup-storage
 sleep 2
 
-# ─── ၂။ Package update ───
-echo -e "\n${BLUE}[*]${RESET} Updating packages..."
-pkg update -y
-pkg upgrade -y
+# ─── ၁။ လိုအပ်တဲ့ Python နဲ့ Library တွေ သွင်းမယ် ───
+echo -e "\033[94m[*] Packages update လုပ်နေသည်...\033[0m"
+pkg update && pkg upgrade -y
 
-# ─── ၃။ Python + Termux API ───
-echo -e "\n${BLUE}[*]${RESET} Installing Python + Termux:API..."
-pkg install -y python termux-api
+echo -e "\033[94m[*] Python + Termux:API + Tools သွင်းနေသည်...\033[0m"
+pkg install -y python python-dev pip termux-api curl wget openssl libffi
 
-# ─── ၄။ Python packages ───
-echo -e "\n${BLUE}[*]${RESET} Installing Python packages..."
+echo -e "\033[94m[*] Python packages သွင်းနေသည်...\033[0m"
 pip install --upgrade pip
-pip install aiohttp requests
+pip install requests aiohttp
 
-# ─── ၅။ Verify Python ───
-echo -e "\n${BLUE}[*]${RESET} Verifying Python..."
-python --version || { echo -e "${RED}❌ Python install failed${RESET}"; exit 1; }
-python -c "import aiohttp; print('aiohttp', aiohttp.__version__)" || \
-    { echo -e "${RED}❌ aiohttp install failed${RESET}"; exit 1; }
-
-# ─── ၆။ Create folder ───
-echo -e "\n${BLUE}[*]${RESET} Creating ~/mkmk ..."
+# ─── ၂။ Folder အဟောင်းရှိရင် ဖျက်ပြီး အသစ်ဆောက်မယ် ───
 rm -rf ~/mkmk
 mkdir -p ~/mkmk
 cd ~/mkmk
 
-# ─── ၇။ Architecture detect ───
+# ─── ၃။ ဖုန်းရဲ့ Bit (Architecture) ကို စစ်ဆေးမယ် ───
 ARCH=$(getprop ro.product.cpu.abi)
-echo -e "\n${BLUE}[*]${RESET} Detected architecture: ${YELLOW}${ARCH}${RESET}"
 
-REPO="https://raw.githubusercontent.com/myominhtet114789-byte/mkmk/main"
-
-case "$ARCH" in
-    arm64-v8a|aarch64)
-        SO_FILE="mkmk_64bit.so"
-        ;;
-    armeabi-v7a|armeabi)
-        SO_FILE="mkmk_32bit.so"
-        ;;
-    *)
-        echo -e "${YELLOW}⚠️  Unknown arch '${ARCH}' — trying 64-bit${RESET}"
-        SO_FILE="mkmk_64bit.so"
-        ;;
-esac
-
-# ─── ၈။ Download .so ───
-echo -e "\n${BLUE}[*]${RESET} Downloading ${SO_FILE} ..."
-if curl -fL -o mkmk.so "${REPO}/${SO_FILE}"; then
-    echo -e "${GREEN}✅ Downloaded: mkmk.so${RESET}"
+if [ "$ARCH" = "arm64-v8a" ]; then
+    echo -e "\033[94m[*] 64-bit ဖုန်းဖြစ်ကြောင်း စစ်ဆေးတွေ့ရှိရသဖြင့် 64-bit version ကို ဒေါင်းလုဒ်ဆွဲနေသည်...\033[0m"
+    curl -LO https://raw.githubusercontent.com/myominhtet114789-byte/mkmk/main/mkmk_64bit.so
+    mv mkmk_64bit.so mkmk.so
 else
-    echo -e "${RED}❌ Download failed: ${SO_FILE}${RESET}"
-    exit 1
+    echo -e "\033[94m[*] 32-bit ဖုန်းဖြစ်ကြောင်း စစ်ဆေးတွေ့ရှိရသဖြင့် 32-bit version ကို ဒေါင်းလုဒ်ဆွဲနေသည်...\033[0m"
+    curl -LO https://raw.githubusercontent.com/myominhtet114789-byte/mkmk/main/mkmk_32bit.so
+    mv mkmk_32bit.so mkmk.so
 fi
 
-# ─── ၉။ Verify .so ───
-if [ ! -s mkmk.so ]; then
-    echo -e "${RED}❌ mkmk.so is empty or missing${RESET}"
-    exit 1
-fi
-SO_SIZE=$(stat -c%s mkmk.so 2>/dev/null || stat -f%z mkmk.so)
-echo -e "${GREEN}✅ File size: ${SO_SIZE} bytes${RESET}"
+# ─── ၄။ Starter ဖိုင်ကို ဒေါင်းမယ် ───
+curl -LO https://raw.githubusercontent.com/myominhtet114789-byte/mkmk/main/mkmk_run.py
 
-# ─── ၁၀။ Download runner ───
-echo -e "\n${BLUE}[*]${RESET} Downloading runner..."
-if curl -fL -o mkmk_run.py "${REPO}/mkmk_run.py"; then
-    echo -e "${GREEN}✅ Downloaded: mkmk_run.py${RESET}"
-else
-    echo -e "${RED}❌ Runner download failed${RESET}"
-    exit 1
-fi
-
-# ─── ၁၁။ Final check ───
-echo -e "\n${BLUE}[*]${RESET} Files in ~/mkmk:"
+# ─── ၅။ Verify ───
+echo -e "\n\033[94m[*] ဖိုင်များ စစ်ဆေးနေသည်...\033[0m"
 ls -lh ~/mkmk/
 
-# ─── ၁၂။ Success ───
-echo -e "\n${CYAN}═══════════════════════════════════════════════${RESET}"
-echo -e "${GREEN}✅ Installation complete!${RESET}"
-echo -e "${CYAN}═══════════════════════════════════════════════${RESET}"
-echo -e "\n${YELLOW}အသုံးပြုရန်:${RESET}"
-echo -e "   ${CYAN}cd ~/mkmk && python mkmk_run.py${RESET}\n"
+echo -e "\033[92m[✔] အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ!\033[0m"
+echo -e "\033[93mအသုံးပြုရန်: cd ~/mkmk && python mkmk_run.py\033[0m"
